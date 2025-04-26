@@ -63,18 +63,18 @@ class OnboardingSerializer(serializers.ModelSerializer):
     last_name = serializers.CharField(required=False, allow_blank=True)
     preferred_name = serializers.CharField(required=False, allow_blank=True) # Already on CustomUser
 
-    # Profile fields (using source='profile.field_name')
-    year_in_school = serializers.ChoiceField(choices=Profile.AcademicYear.choices, required=False, allow_null=True, source='profile.year_in_school')
-    department = serializers.CharField(required=False, allow_blank=True, source='profile.department')
-    socials = serializers.JSONField(required=False, allow_null=True, source='profile.socials')
+    # Profile fields (source removed, handled in create)
+    year_in_school = serializers.ChoiceField(choices=Profile.AcademicYear.choices, required=False, allow_null=True)
+    department = serializers.CharField(required=False, allow_blank=True)
+    socials = serializers.JSONField(required=False, allow_null=True)
 
-    # ManyToMany fields for Profile (using custom related field)
-    majors = NameRelatedField(related_model=Major, many=True, required=False, source='profile.majors')
-    minors = NameRelatedField(related_model=Minor, many=True, required=False, source='profile.minors')
-    interests = NameRelatedField(related_model=Interest, many=True, required=False, source='profile.interests')
-    courses_taking = CourseRelatedField(related_model=Course, many=True, required=False, source='profile.courses_taking')
-    favorite_courses = CourseRelatedField(related_model=Course, many=True, required=False, source='profile.favorite_courses')
-    clubs = NameRelatedField(related_model=Club, many=True, required=False, source='profile.clubs')
+    # ManyToMany fields for Profile (source removed, handled in create)
+    majors = NameRelatedField(related_model=Major, many=True, required=False)
+    minors = NameRelatedField(related_model=Minor, many=True, required=False)
+    interests = NameRelatedField(related_model=Interest, many=True, required=False)
+    courses_taking = CourseRelatedField(related_model=Course, many=True, required=False)
+    favorite_courses = CourseRelatedField(related_model=Course, many=True, required=False)
+    clubs = NameRelatedField(related_model=Club, many=True, required=False)
 
     # Nested write for personality answers
     personality_answers = OnboardingPersonalityAnswerSerializer(many=True, write_only=True, required=True)
@@ -105,11 +105,12 @@ class OnboardingSerializer(serializers.ModelSerializer):
         }
         personality_answers_data = validated_data.pop('personality_answers')
 
-        # Remaining validated_data should be for the User model
-        user_data = validated_data
+        # Explicitly define User fields based on serializer definition
+        user_field_names = ['username', 'email', 'password', 'first_name', 'last_name', 'preferred_name']
+        user_data = {k: v for k, v in validated_data.items() if k in user_field_names}
 
         with transaction.atomic():
-            # Create User instance
+            # Create User instance using only user-specific data
             user = User.objects.create_user(**user_data)
 
             # Create Profile instance, linking to the user
