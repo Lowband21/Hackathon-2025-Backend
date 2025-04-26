@@ -24,6 +24,11 @@ The backend project is set up using Dockerized Django, PostgreSQL, and Gunicorn.
     *   Models `PersonalityQuestion` and `PersonalityAnswer` are defined to store questions and user responses linked to their profile.
     *   Answers are submitted during onboarding via the `POST /api/onboarding/` endpoint.
 
+5.  **API Testing:**
+    *   Automated tests using Django REST Framework's `APITestCase` have been implemented in `backend/api/tests.py`.
+    *   Current tests cover the primary success ("happy path") scenarios and basic failure conditions (authentication/authorization) for the onboarding, authentication (JWT obtain/refresh), profile management (GET/PATCH), and personality question listing endpoints.
+    *   Further tests covering edge cases and various invalid input scenarios can be added for increased robustness.
+
 ## Project Structure (`backend` directory)
 
 ```
@@ -35,7 +40,7 @@ backend/
 │   ├── apps.py           # App configuration
 │   ├── models.py         # Defines database tables (CustomUser, Profile, Interest, etc.)
 │   ├── serializers.py    # Defines data validation and representation (Onboarding, ProfileUpdate, etc.)
-│   ├── tests.py          # Application tests (currently basic)
+│   ├── tests.py          # Automated API tests using APITestCase
 │   ├── urls.py           # URL routing specific to the 'api' app (/onboarding/, /profile/me/, etc.)
 │   └── views.py          # Handles request/response logic (OnboardingView, UserProfileView, etc.)
 ├── core/                 # Django project configuration
@@ -85,7 +90,7 @@ Other Files:
     *   Imports all relevant models from `api/models.py`.
     *   Imports `get_user_model` to reference the `CustomUser`.
     *   Defines how model data is converted to/from JSON.
-    *   `OnboardingSerializer` contains complex logic for creating `User`, `Profile`, and related `PersonalityAnswer` instances within a transaction. Includes nested serializers and custom `NameRelatedField` for handling M2M relationships by name.
+    *   `OnboardingSerializer` contains complex logic for creating `User`, `Profile`, and related `PersonalityAnswer` instances within a transaction. Includes nested serializers and custom `NameRelatedField` for handling M2M relationships by name. (Note: `source` attribute removed from profile fields as logic is handled in `create`).
     *   `ProfileUpdateSerializer` handles partial updates to the `Profile` model.
 *   **`backend/api/models.py`:**
     *   Defines the database schema using Django's ORM (`models.Model`).
@@ -95,3 +100,4 @@ Other Files:
     *   Uses `settings.AUTH_USER_MODEL` to correctly link to the active user model.
 *   **`backend/manage.py`:** Uses `settings.py` to configure Django for management commands (like `runserver`, `makemigrations`, `migrate`).
 *   **`backend/requirements.txt`:** Lists all Python dependencies required by the project, installed via `pip` (usually within the Docker build process).
+*   **`backend/api/tests.py`:** Contains `APITestCase` tests for core API endpoints. Relies on URL names defined in `api/urls.py` and `core/urls.py`, interacts with views/serializers, and asserts database state changes based on models in `api/models.py`.
