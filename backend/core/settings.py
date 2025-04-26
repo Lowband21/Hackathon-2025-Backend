@@ -27,7 +27,7 @@ SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "django-insecure-6ddb^)^6xv(xgafd785
 DEBUG = os.getenv('DEBUG', 'False') == 'True' # Read DEBUG from env, default to False
 
 ALLOWED_HOSTS = os.getenv("DJANGO_ALLOWED_HOSTS", "localhost 127.0.0.1 [::1]").split() # Read from env, provide defaults
-
+if DEBUG: ALLOWED_HOSTS.append("*")
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
@@ -135,6 +135,10 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # Specify your custom user model
 AUTH_USER_MODEL = 'api.CustomUser'
+
+# User uploads/media
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 # REST Framework Settings
 REST_FRAMEWORK = {

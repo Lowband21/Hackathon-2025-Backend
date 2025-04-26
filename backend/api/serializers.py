@@ -64,6 +64,7 @@ class OnboardingSerializer(serializers.ModelSerializer):
     preferred_name = serializers.CharField(required=False, allow_blank=True) # Already on CustomUser
 
     # Profile fields (source removed, handled in create)
+    image = serializers.ImageField(required=False, source='profile.image')
     year_in_school = serializers.ChoiceField(choices=Profile.AcademicYear.choices, required=False, allow_null=True)
     department = serializers.CharField(required=False, allow_blank=True)
     socials = serializers.JSONField(required=False, allow_null=True)
@@ -83,8 +84,8 @@ class OnboardingSerializer(serializers.ModelSerializer):
         model = User
         # Updated fields list
         fields = [
-            'username', 'email', 'password', 'first_name', 'last_name', 'preferred_name',
-            'year_in_school', 'department', 'socials', # Profile fields sourced
+            'email', 'password', 'first_name', 'last_name', 'preferred_name',
+            'image', 'year_in_school', 'department', 'socials', # Profile fields sourced
             'majors', 'minors', 'interests', 'courses_taking', 'favorite_courses', 'clubs', # M2M fields sourced
             'personality_answers' # Nested write field
         ]
@@ -93,6 +94,7 @@ class OnboardingSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         # Extract profile-related data before User creation
         profile_related_data = {
+            'image': validated_data.pop('image', None) if 'image' in validated_data else None,
             'year_in_school': validated_data.pop('year_in_school', None),
             'department': validated_data.pop('department', ''),
             'socials': validated_data.pop('socials', {}),
@@ -106,7 +108,7 @@ class OnboardingSerializer(serializers.ModelSerializer):
         personality_answers_data = validated_data.pop('personality_answers')
 
         # Explicitly define User fields based on serializer definition
-        user_field_names = ['username', 'email', 'password', 'first_name', 'last_name', 'preferred_name']
+        user_field_names = ['email', 'password', 'first_name', 'last_name', 'preferred_name']
         user_data = {k: v for k, v in validated_data.items() if k in user_field_names}
 
         with transaction.atomic():
@@ -151,6 +153,7 @@ class OnboardingSerializer(serializers.ModelSerializer):
 # --- Serializer for Profile Update (PATCH) ---
 class ProfileUpdateSerializer(serializers.ModelSerializer):
     # Use the same related fields as in OnboardingSerializer for consistency
+    image = serializers.ImageField(required=False)
     majors = NameRelatedField(related_model=Major, many=True, required=False)
     minors = NameRelatedField(related_model=Minor, many=True, required=False)
     interests = NameRelatedField(related_model=Interest, many=True, required=False)
@@ -159,12 +162,11 @@ class ProfileUpdateSerializer(serializers.ModelSerializer):
     clubs = NameRelatedField(related_model=Club, many=True, required=False)
     year_in_school = serializers.ChoiceField(choices=Profile.AcademicYear.choices, required=False, allow_null=True)
 
-
     class Meta:
         model = Profile
         # Updated fields list for PATCHable profile attributes
         fields = [
-            'year_in_school', 'department', 'socials',
+            'image', 'year_in_school', 'department', 'socials',
             'majors', 'minors', 'interests', 'courses_taking', 'favorite_courses', 'clubs'
         ]
         read_only_fields = ['user'] # User should not be changed via this serializer

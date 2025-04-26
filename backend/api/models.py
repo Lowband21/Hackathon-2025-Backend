@@ -2,17 +2,72 @@ from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.conf import settings # To link to the user model cleanly
 from django.core.validators import MinValueValidator, MaxValueValidator # Import validators
+from django.contrib.auth.models import BaseUserManager
+
+class CustomUserManager(BaseUserManager):
+    """
+    Custom user manager where email is the unique identifier
+    instead of username.
+    """
+    def create_user(self, email, password=None, **extra_fields):
+        """
+        Create and save a user with the given email and password.
+        """
+        if not email:
+            raise ValueError('Email must be set')
+        
+        email = self.normalize_email(email)
+        
+        # Generate a username from email if not provided
+        if 'username' not in extra_fields or not extra_fields['username']:
+            username = email.split('@')[0]
+            # Check if username already exists
+            base_username = username
+            counter = 1
+            while self.model.objects.filter(username=username).exists():
+                username = f"{base_username}{counter}"
+                counter += 1
+            extra_fields['username'] = username
+        
+        user = self.model(email=email, **extra_fields)
+        user.set_password(password)
+        user.save(using=self._db)
+        return user
+
+    def create_superuser(self, email, password=None, **extra_fields):
+        """
+        Create and save a SuperUser with the given email and password.
+        """
+        extra_fields.setdefault('is_staff', True)
+        extra_fields.setdefault('is_superuser', True)
+        extra_fields.setdefault('is_active', True)
+
+        if extra_fields.get('is_staff') is not True:
+            raise ValueError('Superuser must have is_staff=True.')
+        if extra_fields.get('is_superuser') is not True:
+            raise ValueError('Superuser must have is_superuser=True.')
+        
+        return self.create_user(email, password, **extra_fields)
 
 # 1. Custom User (Extending Django's default)
 class CustomUser(AbstractUser):
     preferred_name = models.CharField(max_length=150, blank=True, verbose_name="Preferred Name")
+    email = models.EmailField(unique=True)  # Ensure email is unique
+    
+    # Set USERNAME_FIELD to email
+    USERNAME_FIELD = 'email'
+    REQUIRED_FIELDS = ['username']  # Keep username as a required field for admin
+    
+    # Use CustomUserManager
+    objects = CustomUserManager()
+
     # Add related_name to resolve clashes with default User model
     groups = models.ManyToManyField(
         'auth.Group',
         verbose_name='groups',
         blank=True,
         help_text='The groups this user belongs to. A user will get all permissions granted to each of their groups.',
-        related_name="customuser_set", # Unique related_name
+        related_name="customuser_set",
         related_query_name="customuser",
     )
     user_permissions = models.ManyToManyField(
@@ -20,12 +75,17 @@ class CustomUser(AbstractUser):
         verbose_name='user permissions',
         blank=True,
         help_text='Specific permissions for this user.',
-        related_name="customuser_set", # Unique related_name
+        related_name="customuser_set",
         related_query_name="customuser",
     )
-    # Ensure email is unique if using it for login instead of username
-    # email = models.EmailField(unique=True)
-    def __str__(self): return self.username
+    
+    def __str__(self):
+        return self.email
+        
+    def save(self, *args, **kwargs):
+        # Ensure email is lowercase before saving
+        self.email = self.email.lower() if self.email else self.email
+        super().save(*args, **kwargs)
 
 # 2. Supporting Models for Profile (Many-to-Many or Lookups)
 class Interest(models.Model):
@@ -59,6 +119,9 @@ class Club(models.Model):
 # 3. Personality Quiz Models
 class PersonalityQuestion(models.Model):
     text = models.TextField(unique=True)
+    domain = models.CharField(max_length=1, default="C")
+    facet = models.CharField(max_length=1, default="1")
+    reverse_scale = models.BooleanField(default=False)
     order = models.PositiveIntegerField(default=0, help_text="Display order")
     class Meta: ordering = ['order']
     def __str__(self): return self.text[:50] + "..."
@@ -74,6 +137,7 @@ class Profile(models.Model):
         OTHER = 'OT', 'Other'
 
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='profile')
+    image = models.ImageField(upload_to='profile_images/', blank=True, null=True)
     # Removed major CharField, replaced with ManyToManyField below
     year_in_school = models.CharField(
         max_length=2,
