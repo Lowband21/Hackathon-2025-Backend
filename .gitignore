@@ -1,0 +1,24 @@
+# .gitignore
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.db
+db.sqlite3 # If you ever use SQLite temporarily
+
+# Environments
+.env
+venv/
+env/
+
+# Staticfiles / Media
+staticfiles/
+media/
+
+# Docker
+docker-compose.override.yml
+
+# OS / Editor specific
+.DS_Store
+*.swp
+*.swo

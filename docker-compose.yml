@@ -1,0 +1,42 @@
+# docker-compose.yml
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine # Use a specific version, alpine is smaller
+    container_name: campus_serendipity_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/ # Persist data
+    environment:
+      # These must match your .env file
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    ports:
+      - "5432:5432" # Expose port locally if needed for direct DB access (remove if not needed)
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: . # Use the current directory as build context
+      dockerfile: Dockerfile # Specify the Dockerfile
+      target: development # Build the 'development' stage from Dockerfile
+    container_name: campus_serendipity_backend
+    # Command override example (can keep default CMD from Dockerfile too)
+    # command: gunicorn core.wsgi:application --bind 0.0.0.0:8000 --reload
+    volumes:
+      - ./backend:/app # Mount your local backend code into the container for live reloading
+    ports:
+      - "8000:8000" # Map host port 8000 to container port 8000
+    env_file:
+      - .env # Load environment variables from .env file
+    depends_on:
+      db:
+        condition: service_healthy # Wait for DB to be healthy before starting backend
+
+volumes:
+  postgres_data: 
