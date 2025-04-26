@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 import os
 from pathlib import Path
 from dotenv import load_dotenv
+from datetime import timedelta # Needed for JWT settings
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -31,15 +32,6 @@ ALLOWED_HOSTS = os.getenv("DJANGO_ALLOWED_HOSTS", "localhost 127.0.0.1 [::1]").s
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure-6ddb^)^6xv(xgafd7853o2$fsf4i74j5p7&mjrvs$lh94)6-q0"
-
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
-
-ALLOWED_HOSTS = []
-
-
 # Application definition
 
 INSTALLED_APPS = [
@@ -51,7 +43,9 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     # Third-party apps
     "rest_framework",
-    "api",
+    'rest_framework_simplejwt', # Add Simple JWT
+    # Your apps
+    "api", # Ensure your app 'api' is listed
 ]
 
 MIDDLEWARE = [
@@ -138,3 +132,56 @@ STATIC_URL = "static/"
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# Specify your custom user model
+AUTH_USER_MODEL = 'api.CustomUser'
+
+# REST Framework Settings
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        # Use JWT authentication as the default
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        # Optionally keep SessionAuthentication if using browsable API for dev
+        # 'rest_framework.authentication.SessionAuthentication',
+    ),
+    'DEFAULT_PERMISSION_CLASSES': (
+        # Default to deny access unless explicitly allowed
+        'rest_framework.permissions.IsAuthenticatedOrReadOnly',
+        # Or be more restrictive:
+        # 'rest_framework.permissions.IsAuthenticated',
+    )
+    # Add pagination, filtering settings here if needed later
+}
+
+# Simple JWT Settings (Customize token lifetimes, algorithms, etc.)
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60), # e.g., 1 hour
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),    # e.g., 1 day
+    'ROTATE_REFRESH_TOKENS': False, # Set to True to issue new refresh token on refresh
+    'BLACKLIST_AFTER_ROTATION': False, # Requires adding 'rest_framework_simplejwt.token_blacklist' to INSTALLED_APPS if True
+    'UPDATE_LAST_LOGIN': True, # Update user's last_login field on token refresh
+
+    'ALGORITHM': 'HS256',
+    'SIGNING_KEY': SECRET_KEY, # Use Django's secret key loaded from .env
+    'VERIFYING_KEY': None,
+    'AUDIENCE': None,
+    'ISSUER': None,
+    'JWK_URL': None,
+    'LEEWAY': 0,
+
+    'AUTH_HEADER_TYPES': ('Bearer',), # Standard: "Authorization: Bearer <token>"
+    'AUTH_HEADER_NAME': 'HTTP_AUTHORIZATION',
+    'USER_ID_FIELD': 'id',
+    'USER_ID_CLAIM': 'user_id',
+    'USER_AUTHENTICATION_RULE': 'rest_framework_simplejwt.authentication.default_user_authentication_rule',
+
+    'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
+    'TOKEN_TYPE_CLAIM': 'token_type',
+    'TOKEN_USER_CLASS': 'rest_framework_simplejwt.models.TokenUser',
+
+    'JTI_CLAIM': 'jti',
+
+    'SLIDING_TOKEN_REFRESH_EXP_CLAIM': 'refresh_exp',
+    'SLIDING_TOKEN_LIFETIME': timedelta(minutes=5), # Not typically used with access/refresh pair
+    'SLIDING_TOKEN_REFRESH_LIFETIME': timedelta(days=1), # Not typically used with access/refresh pair
+}
