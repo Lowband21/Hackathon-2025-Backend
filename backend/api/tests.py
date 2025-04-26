@@ -45,8 +45,7 @@ class OnboardingTests(APITestCase):
         """
         url = reverse('api:onboarding')
         payload = {
-            "username": "testuser",
-            "email": "test@example.com",
+            "email": "test@example.com",  # This is required
             "password": "strongpassword123",
             "first_name": "Test",
             "last_name": "User",
@@ -67,14 +66,17 @@ class OnboardingTests(APITestCase):
         }
 
         response = self.client.post(url, payload, format='json')
-
-        # 1. Check response status
+        
+        # For debugging
+        if response.status_code != status.HTTP_201_CREATED:
+            print(f"Onboarding error: {response.data}")
+            
         self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.data)
-
-        # 2. Check if user and profile were created
+        
+        # Check if user was created by email instead of username
         User = get_user_model()
-        self.assertTrue(User.objects.filter(username="testuser").exists())
-        user = User.objects.get(username="testuser")
+        self.assertTrue(User.objects.filter(email="test@example.com").exists())
+        user = User.objects.get(email="test@example.com")
         self.assertTrue(hasattr(user, 'profile'))
         profile = user.profile
 
@@ -133,18 +135,20 @@ class AuthTests(APITestCase):
         """
         Ensure valid credentials return an access and refresh token.
         """
-        url = reverse('token_obtain_pair')
+        url = reverse('token_obtain_pair')  # This looks for the URL name, which is correct
         payload = {
-            'username': self.test_username,
+            'email': 'auth@example.com',  # Changed from username to email
             'password': self.test_password,
         }
         response = self.client.post(url, payload, format='json')
-
+        
+        # For debugging
+        if response.status_code != status.HTTP_200_OK:
+            print(f"Token error response: {response.data}")
+            
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn('access', response.data)
         self.assertIn('refresh', response.data)
-        # Store refresh token for the next test
-        AuthTests.refresh_token = response.data['refresh']
 
     def test_obtain_token_pair_invalid_credentials(self):
         """
@@ -152,11 +156,11 @@ class AuthTests(APITestCase):
         """
         url = reverse('token_obtain_pair')
         payload = {
-            'username': self.test_username,
+            'email': 'auth@example.com',  # Changed from username to email
             'password': 'wrongpassword',
         }
         response = self.client.post(url, payload, format='json')
-
+        
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_refresh_token_success(self):
@@ -165,8 +169,14 @@ class AuthTests(APITestCase):
         """
         # First, obtain an initial token pair to get a refresh token
         obtain_url = reverse('token_obtain_pair')
-        obtain_payload = {'username': self.test_username, 'password': self.test_password}
+        # Change this line to use email instead of username
+        obtain_payload = {'email': 'auth@example.com', 'password': self.test_password}
         obtain_response = self.client.post(obtain_url, obtain_payload, format='json')
+        
+        # For debugging
+        if obtain_response.status_code != status.HTTP_200_OK:
+            print(f"Refresh token obtain error: {obtain_response.data}")
+            
         self.assertEqual(obtain_response.status_code, status.HTTP_200_OK)
         refresh_token = obtain_response.data.get('refresh')
         self.assertIsNotNone(refresh_token, "Failed to get refresh token in setup for refresh test")
@@ -238,8 +248,13 @@ class ProfileTests(APITestCase):
     def _get_access_token(self):
         """Helper method to get an access token for the test user."""
         url = reverse('token_obtain_pair')
-        payload = {'username': self.test_username, 'password': self.test_password}
+        payload = {'email': 'profile@example.com', 'password': self.test_password}
         response = self.client.post(url, payload, format='json')
+        
+        # For debugging
+        if response.status_code != status.HTTP_200_OK:
+            print(f"Profile token error: {response.data}")
+            
         self.assertEqual(response.status_code, status.HTTP_200_OK, "Failed to get token for profile tests")
         return response.data['access']
 
