@@ -16,19 +16,22 @@ class Command(BaseCommand):
             created_count = 0
             skipped_count = 0
             
-            for item in data:
+            # Enumerate data to get index for ordering
+            for index, item in enumerate(data):
                 text = item.get('text')
                 reverse_scale = item.get('keyed') == 'minus'
                 facet = item.get('facet')
                 domain = item.get('domain')
+                order = index + 1 # Use 1-based index for order
                 
                 try:
-                    # Try to create the new question
+                    # Try to create the new question, including order
                     PersonalityQuestion.objects.create(
                         text=text,
                         reverse_scale=reverse_scale,
                         facet=facet,
                         domain=domain,
+                        order=order, # Add the order field here
                     )
                     created_count += 1
                 except IntegrityError:

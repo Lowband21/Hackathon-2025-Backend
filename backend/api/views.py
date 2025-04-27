@@ -92,6 +92,8 @@ class UserLocationView(generics.GenericAPIView):
         """Handle POST requests - create a new location entry"""
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+
+        print(f"New location for {request.user} with lat {serializer.validated_data['latitude']} and long {serializer.validated_data['longitude']}")
         
         # Create a new location entry
         location = UserLocation.objects.create(
