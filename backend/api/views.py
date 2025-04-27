@@ -2,10 +2,12 @@ from rest_framework import generics, permissions, status # Ensure permissions is
 from django.contrib.auth import get_user_model
 from rest_framework.response import Response
 from django.utils import timezone
+import datetime
 from .models import (
     Profile,
     PersonalityQuestion,
     UserLocation,
+    Connection,
 )
 from .serializers import (
     OnboardingSerializer,
@@ -89,12 +91,23 @@ class UserLocationView(generics.GenericAPIView):
             )
     
     def post(self, request, *args, **kwargs):
-        """Handle POST requests - create a new location entry"""
+        """Handle POST requests - create a new location entry and find nearby users"""
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        print(f"New location for {request.user} with lat {serializer.validated_data['latitude']} and long {serializer.validated_data['longitude']}")
+        latitude = serializer.validated_data['latitude']
+        longitude = serializer.validated_data['longitude']
         
+        print(f"New location for {request.user} with lat {latitude} and long {longitude}")
+        
+        # Create a new location entry
+        location = UserLocation.objects.create(
+            user=request.user,
+            latitude=latitude,
+            longitude=longitude,
+            is_active=serializer.validated_data.get('is_active', True)
+        )
+
         # Create a new location entry
         location = UserLocation.objects.create(
             user=request.user,
@@ -102,7 +115,33 @@ class UserLocationView(generics.GenericAPIView):
             longitude=serializer.validated_data['longitude'],
             is_active=serializer.validated_data.get('is_active', True)
         )
+    
+        # Find nearby users
+        nearby_users = UserLocation.find_nearby_users(
+            user=request.user,
+            latitude=latitude,
+            longitude=longitude
+        )
+
+        # Create connections with nearby users
+        new_connections = []
+        for nearby_location in nearby_users:
+            nearby_user = nearby_location.user
+
+            # if XXXsomething_usersAreMatch(request.user, nearby_user) == False: continue
+
+            # Check if there's an active connection already
+            existing_connection = Connection.get_active_connection(request.user, nearby_user)
+            if not existing_connection:
+                # Create a new connection
+                connection = Connection.create_connection(request.user, nearby_user)
+                new_connections.append({
+                    'user': nearby_user.username,
+                    'distance': nearby_location.distance
+                })
         
-        # Return the created location data
+        
         result_serializer = self.get_serializer(location)
-        return Response(result_serializer.data, status=status.HTTP_201_CREATED)
+        response_data = result_serializer.data
+        
+        return Response(response_data, status=status.HTTP_201_CREATED)
