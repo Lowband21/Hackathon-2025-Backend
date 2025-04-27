@@ -1,7 +1,7 @@
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
-from .models import PersonalityQuestion, Profile
+from .models import PersonalityQuestion, Profile, PersonalityAnswer
 
 class PersonalityQuestionTests(APITestCase):
     """
@@ -343,4 +343,133 @@ class ProfileTests(APITestCase):
         self.assertEqual(self.profile.clubs.count(), 0) # Should be empty
         self.assertFalse(self.profile.clubs.filter(name="Initial Club").exists())
 
-    # Add tests for invalid PATCH data (e.g., bad year_in_school choice) later
+    # Todo: Add tests for invalid PATCH data (e.g., bad year_in_school choice) later
+
+class ProfileModelTests(APITestCase):
+        """tests for the profile model methods"""
+        @classmethod 
+        def setUpTestData(cls):
+            """ set up data for friendship score calculation"""
+            cls.User = get_user_model()
+            # Create two test users
+            cls.user1 = cls.User.objects.create_user(
+                username='user1', 
+                password='pass1234',
+                email='user1@example.com'
+            )
+            cls.user2 = cls.User.objects.create_user(
+                username='user2', 
+                password='pass1234',
+                email='user2@example.com'
+            )
+
+            # Create profile objects
+            cls.profile1 = Profile.objects.create(
+                user=cls.user1,
+                year_in_school=Profile.AcademicYear.SOPHOMORE,
+                department="Computer Science"
+            )
+            cls.profile2 = Profile.objects.create(
+                user=cls.user2,
+                year_in_school=Profile.AcademicYear.JUNIOR,
+                department="Mathematics"
+            )
+
+            # Create personality questions
+            questions = [
+                PersonalityQuestion.objects.create(text=f"Question {i}", order=i) 
+                for i in range(1, 6)
+            ]
+            
+            # Add personality answers for both profiles
+            # User 1 answers
+            for i, q in enumerate(questions, 1):
+                PersonalityAnswer.objects.create(
+                    profile=cls.profile1,
+                    question=q,
+                    answer_score=i  # 1,2,3,4,5
+                )
+
+            # User 2 answers - some similar, some different
+            scores = [2, 2, 3, 5, 1]  # Mix of similar and different scores
+            for i, q in enumerate(questions):
+                PersonalityAnswer.objects.create(
+                    profile=cls.profile2,
+                    question=q,
+                    answer_score=scores[i]
+                )
+                
+            
+
+            # Create shared and unique interests/clubs
+            cls.interest1 = Interest.objects.create(name="Reading")
+
+            # Mock personality_results for both profiles
+            mock_personality_results = [
+                {
+                    'domain': 'O',
+                    'title': 'Openness',
+                    'description': 'Openness to experience',
+                    'result': 'high',
+                    'result_text': 'You are very open to new experiences',
+                    'facets': [
+                        {'name': 'friendliness', 'score': 16, 'description': 'Tendency to be friendly'},
+                        {'name': 'cheerfulness', 'score': 12, 'description': 'Tendency to be cheerful'},
+                        {'name': 'sympathy', 'score': 14, 'description': 'Tendency to sympathize'},
+                        {'name': 'assertiveness', 'score': 18, 'description': 'Tendency to be assertive'},
+                        {'name': 'cooperation', 'score': 10, 'description': 'Tendency to cooperate'},
+                        {'name': 'self-efficiency', 'score': 15, 'description': 'Belief in own competence'},
+                        {'name': 'anger', 'score': 8, 'description': 'Tendency to experience anger'},
+                        {'name': 'modesty', 'score': 11, 'description': 'Tendency to be modest'},
+                        {'name': 'self-consciousness', 'score': 9, 'description': 'Ease in social situations'},
+                        {'name': 'gregariousness', 'score': 17, 'description': 'Preference for company'},
+                        {'name': 'trust', 'score': 13, 'description': 'Tendency to trust others'}
+                    ],
+                    'raw_score': 32,
+                    'count': 10
+                }
+            ]
+
+            # Patch the personality_results property for both profiles
+            cls.profile1.personality_results = mock_personality_results
+            cls.profile2.personality_results = mock_personality_results
+    
+            cls.interest2 = Interest.objects.create(name="Gaming")
+            cls.interest3 = Interest.objects.create(name="Hiking")
+            cls.club1 = Club.objects.create(name="Chess Club")
+            cls.club2 = Club.objects.create(name="Debate Club")
+            
+            # Add interests and clubs
+            cls.profile1.interests.add(cls.interest1, cls.interest2)
+            cls.profile2.interests.add(cls.interest1, cls.interest3)
+            cls.profile1.clubs.add(cls.club1)
+            cls.profile2.clubs.add(cls.club1, cls.club2)
+
+
+        def test_calculate_friendship_score(self):
+            """Test that friendship scores are calculated correctly."""
+            # Calculate friendship score
+            score = Profile.calculate_friendship_score(self.profile1, self.profile2)
+            
+            # Verify score is not None
+            self.assertIsNotNone(score, "Friendship score should not be None")
+            
+            # Verify score is a float
+            self.assertIsInstance(score, float, "Friendship score should be a float")
+            
+            # Since we know our test data, we can verify the components too
+            rmse_score = Profile.calculate_rmse_score(self.profile1, self.profile2)
+            hobby_score = Profile.calculate_hobby_score(self.profile1, self.profile2)
+            flag_score = Profile.calculate_flag_score(self.profile1, self.profile2)
+            
+            # Verify the components are not None
+            self.assertIsNotNone(rmse_score, "RMSE score should not be None")
+            self.assertIsNotNone(hobby_score, "Hobby score should not be None")
+            
+            # Verify the result matches the formula
+            expected = (rmse_score * 1.5 + flag_score) * (1 + hobby_score/2)
+            self.assertAlmostEqual(score, expected, places=5)
+            
+            # Double-check hobby score calculation
+            self.assertEqual(hobby_score, 2/5, "Should have 2 common items (1 interest, 1 club) out of max 5")
+            
