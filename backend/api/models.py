@@ -376,7 +376,7 @@ class Profile(models.Model):
             profile2_eval = eval(p2_trait1,p1_trait2,eval_type)
             weighted_sum += weight * (profile1_eval + profile2_eval)
             
-            return weighted_sum
+        return weighted_sum /2
 
     @staticmethod
     def calculate_friendship_score(profile1, profile2):
@@ -394,6 +394,12 @@ class Profile(models.Model):
         flag = Profile.calculate_flag_score(profile1,profile2)
         
         return (rmse * 1.5 + flag) * (1 + hobby/2)
+    
+    @staticmethod
+    def should_recommend_users(profile1, profile2):
+        score = Profile.calculate_friendship_score(profile1, profile2)
+        threshold = .9
+        return score > threshold 
 
 # 5. Personality Answers (Linking User, Question, and their Answer)
 class PersonalityAnswer(models.Model):
