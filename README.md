@@ -93,14 +93,18 @@ Follow these steps to get the development environment running locally using Dock
     ```
 * **Linting/Formatting:** [Mention any tools used, e.g., Black, Flake8, and how to run them, perhaps via docker-compose exec]
 
-## API Endpoints (Placeholder)
+## API Endpoints
 
-* `POST /api/users/register/` - Register a new user.
-* `POST /api/auth/token/` - Obtain authentication token (e.g., JWT).
-* `GET /api/profile/` - Get current user's profile.
-* `PUT /api/profile/` - Update user's profile (interests, etc.).
-* `POST /api/location/` - Update user's general location zone.
-* `GET /api/connections/` - Check for potential serendipitous connections.
+The core API endpoints are:
+
+*   `POST /api/auth/token/`: Obtain JWT access and refresh tokens using email/password.
+*   `POST /api/auth/token/refresh/`: Refresh JWT access token using a refresh token.
+*   `POST /api/onboarding/`: Register a new user, create their profile, and submit initial personality answers.
+*   `GET /api/profile/me/`: Retrieve the authenticated user's profile.
+*   `PATCH /api/profile/me/`: Update the authenticated user's profile.
+*   `GET /api/personality-questions/`: List available personality questions for the quiz.
+
+For detailed request/response formats and required fields, see `endpoint_reference.md`.
 
 ## Privacy Considerations
 

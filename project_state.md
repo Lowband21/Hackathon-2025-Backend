@@ -11,8 +11,8 @@ The backend project is set up using Dockerized Django, PostgreSQL, and Gunicorn.
 
 2.  **User Onboarding:**
     *   Endpoint `POST /api/onboarding/` allows new user registration.
-    *   Collects basic user info (`username`, `email`, `password`, names), profile details (`year_in_school`, `department`, `socials`), related entities (`majors`, `minors`, `interests`, `courses_taking`, `favorite_courses`, `clubs`), and personality quiz answers.
-    *   Creates the `CustomUser` and associated `Profile` instance, linking all related data.
+    *   Collects user info (`email`, `password`, names), profile details (`image`, `year_in_school`, `department`, `socials`), related entities (`majors`, `minors`, `interests`, `courses_taking`, `favorite_courses`, `clubs`), and personality quiz answers.
+    *   Creates the `CustomUser` and associated `Profile` instance, linking all related data within a transaction.
 
 3.  **Profile Management:**
     *   Endpoint `GET /api/profile/me/` allows an authenticated user to retrieve their profile details.
@@ -27,9 +27,9 @@ The backend project is set up using Dockerized Django, PostgreSQL, and Gunicorn.
 5.  **API Testing:**
     *   Automated tests using Django REST Framework's `APITestCase` have been implemented in `backend/api/tests.py`.
     *   Current tests cover the primary success ("happy path") scenarios and basic failure conditions (authentication/authorization) for the onboarding, authentication (JWT obtain/refresh), profile management (GET/PATCH), and personality question listing endpoints.
-    *   Further tests covering edge cases and various invalid input scenarios can be added for increased robustness.
+    *   Further tests covering edge cases, invalid input scenarios, and M2M relationship handling can be added for increased robustness.
 
-## Project Structure (`backend` directory)
+## Project Structure (`backend` directory and root)
 
 ```
 backend/
@@ -58,7 +58,8 @@ Other Files:
 ├── .env.example          # Example environment variables
 ├── .env                  # Actual environment variables (DB credentials, SECRET_KEY - *ignored by git*)
 ├── README.md             # Project overview and setup instructions
-└── project_state.md      # This file
+├── project_state.md      # This file
+└── endpoint_reference.md # Detailed API endpoint documentation
 ```
 
 ## Interdependencies
@@ -90,8 +91,8 @@ Other Files:
     *   Imports all relevant models from `api/models.py`.
     *   Imports `get_user_model` to reference the `CustomUser`.
     *   Defines how model data is converted to/from JSON.
-    *   `OnboardingSerializer` contains complex logic for creating `User`, `Profile`, and related `PersonalityAnswer` instances within a transaction. Includes nested serializers and custom `NameRelatedField` for handling M2M relationships by name. (Note: `source` attribute removed from profile fields as logic is handled in `create`).
-    *   `ProfileUpdateSerializer` handles partial updates to the `Profile` model.
+    *   `OnboardingSerializer` contains complex logic for creating `User`, `Profile`, and related `PersonalityAnswer` instances within a transaction. Includes nested serializers (`OnboardingPersonalityAnswerSerializer`) and custom `NameRelatedField` (and `CourseRelatedField`) for handling M2M relationships by name during creation/lookup.
+    *   `ProfileUpdateSerializer` handles partial updates (`PATCH`) to the `Profile` model, also using `NameRelatedField` for M2M updates.
 *   **`backend/api/models.py`:**
     *   Defines the database schema using Django's ORM (`models.Model`).
     *   `CustomUser` extends `AbstractUser`.
@@ -101,3 +102,4 @@ Other Files:
 *   **`backend/manage.py`:** Uses `settings.py` to configure Django for management commands (like `runserver`, `makemigrations`, `migrate`).
 *   **`backend/requirements.txt`:** Lists all Python dependencies required by the project, installed via `pip` (usually within the Docker build process).
 *   **`backend/api/tests.py`:** Contains `APITestCase` tests for core API endpoints. Relies on URL names defined in `api/urls.py` and `core/urls.py`, interacts with views/serializers, and asserts database state changes based on models in `api/models.py`.
+*   **`endpoint_reference.md`:** Provides human-readable documentation for all API endpoints, derived from the analysis of URLs, views, and serializers.
