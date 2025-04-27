@@ -1,4 +1,4 @@
-# backend/api/serializers.py
+from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.db import transaction
@@ -87,6 +87,14 @@ class OnboardingSerializer(serializers.ModelSerializer):
     # Nested write for personality answers
     personality_answers = OnboardingPersonalityAnswerSerializer(many=True, write_only=True, required=True)
 
+    def validate_email(self, value):
+        """
+        Check that the email doesn't already exist in the database.
+        """
+        if User.objects.filter(email=value.lower()).exists():
+            raise serializers.ValidationError("A user with this email already exists.")
+        return value.lower()
+
     class Meta:
         model = User
         # Updated fields list
@@ -156,6 +164,19 @@ class OnboardingSerializer(serializers.ModelSerializer):
             PersonalityAnswer.objects.bulk_create(answers_to_create)
 
         return user # Return the created user instance
+    
+    def to_representation(self, instance):
+        # Generate tokens for the newly created user
+        refresh = RefreshToken.for_user(instance)
+        data = super().to_representation(instance)
+        
+        # Add tokens to the response
+        data['tokens'] = {
+            'refresh': str(refresh),
+            'access': str(refresh.access_token),
+        }
+        
+        return data
 
 class PersonalityDomainResultSerializer(serializers.Serializer):
     """
