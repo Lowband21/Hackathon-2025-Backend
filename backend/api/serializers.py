@@ -3,8 +3,15 @@ from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.db import transaction
 from .models import (
-    Profile, Interest, Course, Club, Major, Minor, # Added Major, Minor
-    PersonalityQuestion, PersonalityAnswer
+    Profile,
+    Interest,
+    Course,
+    Club,
+    Major,
+    Minor, # Added Major, Minor
+    PersonalityQuestion,
+    PersonalityAnswer,
+    UserLocation
 )
 
 User = get_user_model()
@@ -173,3 +180,10 @@ class ProfileUpdateSerializer(serializers.ModelSerializer):
 
     # Default update handles partial updates (PATCH) correctly for direct fields.
     # For M2M fields, DRF's default update replaces the entire set.
+
+# Serlializer for the user location ping 
+class UserLocationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserLocation
+        fields = ['latitude', 'longitude', 'last_updated', 'is_active']
+        read_only_fields = ['last_updated']

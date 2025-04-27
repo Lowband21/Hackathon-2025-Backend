@@ -4,6 +4,7 @@ from .views import (
     OnboardingView,
     UserProfileView,
     PersonalityQuestionListView,
+    UserLocationView,
 )
 
 app_name = 'api' # Namespace for the API urls
@@ -17,4 +18,7 @@ urlpatterns = [
 
     # GET /api/personality-questions/ -> Lists available personality questions
     path('personality-questions/', PersonalityQuestionListView.as_view(), name='personality-questions'),
+
+    # GET or POST
+    path('location/', UserLocationView.as_view(), name='location'),
 ]

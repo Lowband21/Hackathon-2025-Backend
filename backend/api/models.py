@@ -165,3 +165,20 @@ class PersonalityAnswer(models.Model):
     )
     class Meta: unique_together = ('profile', 'question')
     def __str__(self): return f"Answer by {self.profile.user.username} to Q{self.question.id}"
+
+# 6. User Location Ping
+class UserLocation(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='locations')
+    latitude = models.FloatField()
+    longitude = models.FloatField()
+    last_updated = models.DateTimeField(auto_now=True)
+    is_active = models.BooleanField(default=False, help_text="Is the user active (did they have the app open when this ping was made)?")
+    
+    def __str__(self):
+        return f"Location for {self.user.username} at {self.last_updated}"
+    
+    class Meta:
+        indexes = [
+            models.Index(fields=['last_updated']),
+            models.Index(fields=['is_active']),
+        ]
