@@ -5,6 +5,8 @@ from django.core.validators import MinValueValidator, MaxValueValidator # Import
 from django.contrib.auth.models import BaseUserManager
 from django.utils.functional import cached_property
 from .ptest import process_answers, get_text_results
+from django.db.models import F
+from django.db.models.functions import Cos, Radians, Sin, ATan2, Sqrt
 import os
 import json
 import math
@@ -417,6 +419,55 @@ class UserLocation(models.Model):
     def __str__(self):
         return f"Location for {self.user.username} at {self.last_updated}"
     
+    @staticmethod
+    def find_nearby_users(user, latitude, longitude, max_distance_km=0.1):
+        """
+        Find users within a certain distance of a given location.
+        
+        Args:
+            user: The user making the request (to exclude from results)
+            latitude: Current latitude
+            longitude: Current longitude 
+            max_distance_km: Maximum distance in kilometers
+            
+        Returns:
+            QuerySet of UserLocation objects for nearby users
+        """
+        
+        # Earth's radius in kilometers
+        R = 6371
+        
+        # Convert latitude and longitude to radians
+        lat_rad = Radians(latitude)
+        long_rad = Radians(longitude)
+        
+        # Calculate distance using Haversine formula
+        # We're using database functions to do this calculation at the database level
+        nearby_locations = UserLocation.objects.annotate(
+            distance=R * ATan2(
+                Sqrt(
+                    Pow(Sin((Radians(F('latitude')) - lat_rad) / 2), 2) +
+                    Cos(lat_rad) * Cos(Radians(F('latitude'))) *
+                    Pow(Sin((Radians(F('longitude')) - long_rad) / 2), 2)
+                ),
+                Sqrt(
+                    1 - (
+                        Pow(Sin((Radians(F('latitude')) - lat_rad) / 2), 2) +
+                        Cos(lat_rad) * Cos(Radians(F('latitude'))) *
+                        Pow(Sin((Radians(F('longitude')) - long_rad) / 2), 2)
+                    )
+                )
+            ) * 2
+        ).filter(
+            distance__lte=max_distance_km,  # Filter by maximum distance
+            user__is_active=True,  # Only get active users
+            is_active=True,  # Only get active location pings
+        ).exclude(
+            user=user  # Exclude the current user
+        ).order_by('distance')  # Order by distance
+        
+        return nearby_locations
+
     class Meta:
         indexes = [
             models.Index(fields=['last_updated']),
