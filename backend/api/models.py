@@ -3,6 +3,10 @@ from django.contrib.auth.models import AbstractUser
 from django.conf import settings # To link to the user model cleanly
 from django.core.validators import MinValueValidator, MaxValueValidator # Import validators
 from django.contrib.auth.models import BaseUserManager
+from django.utils.functional import cached_property
+from .ptest import process_answers, get_text_results
+import os
+import json
 
 class CustomUserManager(BaseUserManager):
     """
@@ -153,6 +157,69 @@ class Profile(models.Model):
     favorite_courses = models.ManyToManyField(Course, blank=True, related_name='favorited_by')
     clubs = models.ManyToManyField(Club, blank=True)
     socials = models.JSONField(blank=True, null=True, default=dict, help_text='e.g., {"instagram": "username", "snapchat": "username", "x": "handle"}') # Updated help text
+
+    @cached_property
+    def personality_results(self):
+        """
+        Calculate and return the personality test results based on the user's answers.
+        Returns None if the user hasn't answered any questions.
+        """
+        
+        # Get all answers for this profile
+        answers = self.personality_answers.all()
+        
+        if not answers.exists():
+            return None
+            
+        try:
+            # Load the test structure
+            test_path = os.path.join(settings.BASE_DIR, 'api', 'data', 'personality_test.json')
+            with open(test_path, 'r') as f:
+                test_structure = json.load(f)
+            
+            # Convert the answers to the required format
+            processed_answers = []
+            for answer in answers:
+                question = answer.question
+                score = answer.answer_score
+                
+                # Handle reversed scoring
+                if question.reverse_scale:
+                    score = 6 - score
+                
+                processed_answers.append({
+                    'domain': question.domain,
+                    'facet': int(question.facet),
+                    'score': score
+                })
+            
+            # Calculate the results
+            results = process_answers(processed_answers)
+            text_results = get_text_results(results, test_structure)
+            
+            # Format the results
+            formatted_results = []
+            for domain_code, domain_data in text_results.items():
+                formatted_results.append({
+                    'domain': domain_code,
+                    'title': domain_data['title'],
+                    'description': domain_data['description'],
+                    'result': results[domain_code]['result'],
+                    'result_text': domain_data['result_text'],
+                    'facets': domain_data['facets'],
+                    'raw_score': results[domain_code]['score'],
+                    'count': results[domain_code]['count']
+                })
+            
+            return formatted_results
+            
+        except Exception as e:
+            # Log the error
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error calculating personality results: {str(e)}")
+            return None
+
     def __str__(self): return f"Profile for {self.user.username}"
 
 # 5. Personality Answers (Linking User, Question, and their Answer)
