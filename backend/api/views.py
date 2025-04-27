@@ -1,10 +1,17 @@
-from rest_framework import generics, permissions # Ensure permissions is imported
+from rest_framework import generics, permissions, status # Ensure permissions is imported
 from django.contrib.auth import get_user_model
-from .models import Profile, PersonalityQuestion
+from rest_framework.response import Response
+from django.utils import timezone
+from .models import (
+    Profile,
+    PersonalityQuestion,
+    UserLocation,
+)
 from .serializers import (
     OnboardingSerializer,
     ProfileUpdateSerializer,
     PersonalityQuestionSerializer,
+    UserLocationSerializer,
 )
 
 User = get_user_model()
@@ -48,3 +55,52 @@ class UserProfileView(generics.RetrieveUpdateAPIView):
         # (e.g., created via createsuperuser or if onboarding failed mid-way)
         profile, created = Profile.objects.get_or_create(user=self.request.user)
         return profile
+
+class UserLocationView(generics.GenericAPIView):
+    """
+    Endpoint for user location operations.
+    GET: Retrieves the user's latest location
+    POST: Creates a new location entry
+    """
+    serializer_class = UserLocationSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get(self, request, *args, **kwargs):
+        """Handle GET requests - return the user's latest location"""
+        try:
+            # Get the most recent location for this user
+            location = UserLocation.objects.filter(
+                user=self.request.user
+            ).order_by('-last_updated').first()
+            
+            if location:
+                serializer = self.get_serializer(location)
+                return Response(serializer.data)
+            else:
+                # No location found
+                return Response(
+                    {"detail": "No location data found for this user."},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+        except Exception as e:
+            return Response(
+                {"detail": f"Error retrieving location: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+    
+    def post(self, request, *args, **kwargs):
+        """Handle POST requests - create a new location entry"""
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        # Create a new location entry
+        location = UserLocation.objects.create(
+            user=request.user,
+            latitude=serializer.validated_data['latitude'],
+            longitude=serializer.validated_data['longitude'],
+            is_active=serializer.validated_data.get('is_active', True)
+        )
+        
+        # Return the created location data
+        result_serializer = self.get_serializer(location)
+        return Response(result_serializer.data, status=status.HTTP_201_CREATED)

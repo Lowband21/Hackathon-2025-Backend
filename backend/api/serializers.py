@@ -3,8 +3,15 @@ from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.db import transaction
 from .models import (
-    Profile, Interest, Course, Club, Major, Minor, # Added Major, Minor
-    PersonalityQuestion, PersonalityAnswer
+    Profile,
+    Interest,
+    Course,
+    Club,
+    Major,
+    Minor, # Added Major, Minor
+    PersonalityQuestion,
+    PersonalityAnswer,
+    UserLocation
 )
 
 User = get_user_model()
@@ -150,6 +157,19 @@ class OnboardingSerializer(serializers.ModelSerializer):
 
         return user # Return the created user instance
 
+class PersonalityDomainResultSerializer(serializers.Serializer):
+    """
+    Serializer for a single personality domain result.
+    """
+    domain = serializers.CharField()
+    title = serializers.CharField()
+    description = serializers.CharField()
+    result = serializers.CharField()
+    result_text = serializers.CharField()
+    facets = serializers.DictField()
+    raw_score = serializers.FloatField()
+    count = serializers.IntegerField()
+
 # --- Serializer for Profile Update (PATCH) ---
 class ProfileUpdateSerializer(serializers.ModelSerializer):
     # Use the same related fields as in OnboardingSerializer for consistency
@@ -162,14 +182,25 @@ class ProfileUpdateSerializer(serializers.ModelSerializer):
     clubs = NameRelatedField(related_model=Club, many=True, required=False)
     year_in_school = serializers.ChoiceField(choices=Profile.AcademicYear.choices, required=False, allow_null=True)
 
+    # Personality Test Results
+    personality_results = PersonalityDomainResultSerializer(many=True, read_only=True)
+
     class Meta:
         model = Profile
         # Updated fields list for PATCHable profile attributes
         fields = [
             'image', 'year_in_school', 'department', 'socials',
-            'majors', 'minors', 'interests', 'courses_taking', 'favorite_courses', 'clubs'
+            'majors', 'minors', 'interests', 'courses_taking', 'favorite_courses', 'clubs',
+            'personality_results'
         ]
         read_only_fields = ['user'] # User should not be changed via this serializer
 
     # Default update handles partial updates (PATCH) correctly for direct fields.
     # For M2M fields, DRF's default update replaces the entire set.
+
+# Serlializer for the user location ping 
+class UserLocationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserLocation
+        fields = ['latitude', 'longitude', 'last_updated', 'is_active']
+        read_only_fields = ['last_updated']

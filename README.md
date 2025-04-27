@@ -71,6 +71,10 @@ Follow these steps to get the development environment running locally using Dock
     * `docker-compose exec backend python manage.py makemigrations` (after changing models)
     * `docker-compose exec backend python manage.py migrate`
     * `docker-compose exec backend python manage.py shell` (to open a Django shell)
+* **Project-Specific Management Commands:**
+    * `docker-compose exec backend python manage.py generate_test_users` (to generate test users)
+    * `docker-compose exec backend python manage.py populate_big5_test` (populate the personality test questions from the JSON flat file)
+
 * **Adding/Updating Dependencies:**
     1.  Add/change packages in `backend/requirements.txt`.
     2.  Rebuild the backend image: `docker-compose build backend`
