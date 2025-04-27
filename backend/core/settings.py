@@ -29,6 +29,8 @@ DEBUG = os.getenv('DEBUG', 'False') == 'True' # Read DEBUG from env, default to 
 ALLOWED_HOSTS = os.getenv("DJANGO_ALLOWED_HOSTS", "localhost 127.0.0.1 [::1]").split() # Read from env, provide defaults
 if DEBUG: ALLOWED_HOSTS.append("*")
 
+if DEBUG: CORS_ALLOWED_ORIGINS = ["*"]
+
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
@@ -41,6 +43,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "corsheaders",
     # Third-party apps
     "rest_framework",
     'rest_framework_simplejwt', # Add Simple JWT
@@ -51,6 +54,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
+    "corsheaders.middleware.CorsMiddleware"
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
